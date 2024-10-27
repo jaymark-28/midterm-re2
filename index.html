@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMPLE CIRCUIT SIMULATION</title>
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
+    <!-- The overall design of my web page -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #d8d6d6;
+
+        }
+        .container {
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 5px 10px 10px rgba(0,0,0,0.1);
+            background-color: #423b3b;
+            padding: 50px;
+        }
+        .circuit-container {
+            width: 500px;
+            height: 200px;
+            margin: 20px auto;
+            padding: 10px;
+    
+        }
+        label, input {
+            display: block;
+            margin-bottom: 10px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <!-- Main container for the circuit simulation -->
+    <div class="container">
+        <h2>SIMPLE CIRCUIT SIMULATION</h2>
+    <!-- Voltage slider with label and real-time display -->
+        <label for="voltage">Voltage: <span id="voltage-value">6</span>V</label>
+        <input type="range" id="voltage" min="0" max="12" value="6" step="0.1">
+    <!-- Resistance slider with label and real-time display -->
+        <label for="resistance">Resistance: <span id="resistance-value">500</span>Ω</label>
+        <input type="range" id="resistance" min="1" max="1000" value="500">
+        
+        <div class="circuit-container">
+     <!-- SVG for drawing the circuit diagram -->
+            <svg width="100%" height="100%" viewBox="0 0 300 200">
+                <!-- Battery -->
+                <line x1="30" y1="50" x2="30" y2="150" stroke="black" stroke-width="2"/>
+                <line x1="40" y1="70" x2="40" y2="130" stroke="black" stroke-width="4"/>
+                <text x="10" y="100" text-anchor="middle" dominant-baseline="middle" font-size="12">+</text>
+                <text x="60" y="100" text-anchor="middle" dominant-baseline="middle" font-size="12" id="voltage-text">6V</text>
+
+                <!-- Resistor -->
+                <line x1="70" y1="50" x2="130" y2="50" stroke="black" stroke-width="2"/>
+                <path d="M130,40 Q140,50 150,40 Q160,30 170,40 Q180,50 190,40 Q200,30 210,40 L210,60 Q200,50 190,60 Q180,70 170,60 Q160,50 150,60 Q140,70 130,60 Z" fill="none" stroke="black" stroke-width="2"/>
+                <text x="170" y="30" text-anchor="middle" dominant-baseline="middle" font-size="12" id="resistance-text">500Ω</text>
+
+                <!-- LED -->
+                <polygon points="250,40 270,50 250,60 250,40" fill="none" stroke="black" stroke-width="2"/>
+                <line x1="270" y1="40" x2="270" y2="60" stroke="black" stroke-width="2"/>
+                <circle cx="260" cy="50" r="15" fill="yellow" id="led-circle"/>
+
+                <!-- Wires -->
+                <line x1="40" y1="50" x2="70" y2="50" stroke="black" stroke-width="2"/>
+                <line x1="210" y1="50" x2="250" y2="50" stroke="black" stroke-width="2"/>
+                <line x1="270" y1="50" x2="290" y2="50" stroke="black" stroke-width="2"/>
+                <line x1="290" y1="50" x2="290" y2="150" stroke="black" stroke-width="2"/>
+                <line x1="40" y1="150" x2="290" y2="150" stroke="black" stroke-width="2"/>
+
+                <!-- Current direction -->
+                <path d="M150,140 L160,150 L150,160 Z" fill="black" id="current-arrow"/>
+                <text x="180" y="170" text-anchor="middle" dominant-baseline="middle" font-size="12" id="current-text">0 mA</text>
+            </svg>
+        </div>
+    </div>
+
+    <py-script>
+from js import document
+from pyodide.ffi import create_proxy
+# Function to calculate the current in the circuit using Ohm's Law (I = V / R)
+def calculate_circuit(voltage, resistance):
+    current = voltage / resistance
+    return current * 1000  # Convert to mA
+# Function to calculate and update the LED's brightness based on the current
+def update_led_brightness(current):
+    max_current = 20  # mA
+    brightness = min(current / max_current, 1)
+    r = int(255 * brightness)
+    g = int(100 * brightness)
+    return f"rgb({r}, {g}, 0)"
+    
+def update_simulation(event):
+    voltage = float(document.getElementById("voltage").value)
+    resistance = float(document.getElementById("resistance").value)
+    
+    document.getElementById("voltage-value").textContent = f"{voltage:.1f}"
+    document.getElementById("resistance-value").textContent = f"{resistance:.0f}"
+    # Calculate the current in the circuit
+    current = calculate_circuit(voltage, resistance)
+    
+    # Update circuit elements
+    document.getElementById("voltage-text").textContent = f"{voltage}V"
+    document.getElementById("resistance-text").textContent = f"{resistance}Ω"
+    document.getElementById("current-text").textContent = f"{current:.2f} mA"
+    
+    led_color = update_led_brightness(current)
+    document.getElementById("led-circle").style.fill = led_color
+    
+    # Update current arrow size
+    arrow_scale = min(current / 20, 1)  # Max at 20mA
+    document.getElementById("current-arrow").setAttribute("transform", f"translate(0, {150 - arrow_scale * 20}) scale(1, {arrow_scale})")
+
+# Set up event listeners
+voltage_slider = document.getElementById("voltage")
+resistance_slider = document.getElementById("resistance")
+
+voltage_slider.addEventListener("input", create_proxy(update_simulation))
+resistance_slider.addEventListener("input", create_proxy(update_simulation))
+
+# Initial update
+update_simulation(None)
+    </py-script>
+</body>
+</html>
